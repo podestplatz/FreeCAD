@@ -1550,20 +1550,23 @@ void Application::initConfig(int argc, char ** argv)
         _pConsoleObserverFile = 0;
 
     // Banner ===========================================================
-    if (!(mConfig["Verbose"] == "Strict"))
-        Console().Message("%s %s, Libs: %s.%sR%s\n%s",mConfig["ExeName"].c_str(),
-                          mConfig["ExeVersion"].c_str(),
-                          mConfig["BuildVersionMajor"].c_str(),
-                          mConfig["BuildVersionMinor"].c_str(),
-                          mConfig["BuildRevision"].c_str(),
-                          mConfig["CopyrightInfo"].c_str());
-    else
-        Console().Message("%s %s, Libs: %s.%sB%s\n",mConfig["ExeName"].c_str(),
-                          mConfig["ExeVersion"].c_str(),
-                          mConfig["BuildVersionMajor"].c_str(),
-                          mConfig["BuildVersionMinor"].c_str(),
-                          mConfig["BuildRevision"].c_str());
-
+    if (!(mConfig["RunMode"] == "Cmd")) {
+        // Remove banner if FreeCAD is invoked via the -c command as regular
+        // Python interpreter
+        if (!(mConfig["Verbose"] == "Strict"))
+            Console().Message("%s %s, Libs: %s.%sR%s\n%s",mConfig["ExeName"].c_str(),
+                              mConfig["ExeVersion"].c_str(),
+                              mConfig["BuildVersionMajor"].c_str(),
+                              mConfig["BuildVersionMinor"].c_str(),
+                              mConfig["BuildRevision"].c_str(),
+                              mConfig["CopyrightInfo"].c_str());
+        else
+            Console().Message("%s %s, Libs: %s.%sB%s\n",mConfig["ExeName"].c_str(),
+                              mConfig["ExeVersion"].c_str(),
+                              mConfig["BuildVersionMajor"].c_str(),
+                              mConfig["BuildVersionMinor"].c_str(),
+                              mConfig["BuildRevision"].c_str());
+    }
     LoadParameters();
 
     auto loglevelParam = _pcUserParamMngr->GetGroup("BaseApp/LogLevels");
@@ -2061,7 +2064,7 @@ void Application::ParseOptions(int ac, char ** av)
 #endif
     ;
 
-    // Ignored options, will be safely ignored. Mostly used by underlaying libs.
+    // Ignored options, will be safely ignored. Mostly used by underlying libs.
     //boost::program_options::options_description x11("X11 options");
     //x11.add_options()
     //    ("display",  boost::program_options::value< string >(), "set the X-Server")

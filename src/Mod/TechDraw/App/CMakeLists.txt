@@ -44,6 +44,9 @@ generate_from_xml(DrawViewCollectionPy)
 generate_from_xml(DrawProjGroupPy)
 generate_from_xml(DrawProjGroupItemPy)
 generate_from_xml(DrawViewAnnotationPy)
+generate_from_xml(DrawLeaderLinePy)
+generate_from_xml(DrawRichAnnoPy)
+
 
 SET(Draw_SRCS
     DrawPage.cpp
@@ -74,6 +77,8 @@ SET(Draw_SRCS
     DrawViewCollection.h
     DrawViewDimension.cpp
     DrawViewDimension.h
+    DrawViewBalloon.cpp
+    DrawViewBalloon.h
     DrawViewSection.cpp
     DrawViewSection.h
     DrawHatch.cpp
@@ -89,7 +94,12 @@ SET(Draw_SRCS
     DrawViewImage.cpp
     DrawViewImage.h
     DrawViewDetail.cpp
-    DrawViewDetail.h)
+    DrawViewDetail.h
+    DrawLeaderLine.cpp
+    DrawLeaderLine.h
+    DrawRichAnno.cpp
+    DrawRichAnno.h
+    )
 
 SET(TechDraw_SRCS
     AppTechDraw.cpp
@@ -145,18 +155,23 @@ SET(Python_SRCS
     DrawProjGroupItemPy.xml
     DrawProjGroupItemPyImp.cpp
     DrawViewAnnotationPy.xml
-    DrawViewAnnotationPyImp.cpp)
+    DrawViewAnnotationPyImp.cpp
+    DrawLeaderLinePy.xml
+    DrawLeaderLinePyImp.cpp
+    DrawRichAnnoPy.xml
+    DrawRichAnnoPyImp.cpp
+    )
 
 SOURCE_GROUP("Mod" FILES ${TechDraw_SRCS})
 SOURCE_GROUP("Features" FILES ${Draw_SRCS})
 SOURCE_GROUP("Geometry" FILES ${Geometry_SRCS})
 SOURCE_GROUP("Python" FILES ${Python_SRCS})
 
-if(BUILD_USE_PCH)
+if(FREECAD_USE_PCH)
     #add_definitions(-D_PreComp_)
     #GET_MSVC_PRECOMPILED_SOURCE("PreCompiled.cpp" TechDrawCPP_SRCS ${TechDraw_SRCS} ${Draw_SRCS} )
     #ADD_MSVC_PRECOMPILED_HEADER(TechDraw PreCompiled.h PreCompiled.cpp TechDrawCPP_SRCS)
-endif(BUILD_USE_PCH)
+endif(FREECAD_USE_PCH)
 
 add_library(TechDraw SHARED ${TechDraw_SRCS} ${Draw_SRCS} ${TechDrawAlgos_SRCS}
                            ${Geometry_SRCS} ${Python_SRCS})

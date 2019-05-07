@@ -78,6 +78,7 @@ Gui::MenuItem* Workbench::setupMenuBar() const
     *draw << "TechDraw_NewAngleDimension";
     *draw << "TechDraw_NewAngle3PtDimension";
     *draw << "TechDraw_LinkDimension";
+    *draw << "TechDraw_NewBalloon";
     *draw << "Separator";
     *draw << "TechDraw_ExportPage";
     *draw << "TechDraw_ExportPageDxf";
@@ -88,6 +89,8 @@ Gui::MenuItem* Workbench::setupMenuBar() const
     *draw << "TechDraw_Image";
     *draw << "TechDraw_ToggleFrame";
 //    *decor << "TechDraw_RedrawPage";
+    *draw << "TechDraw_LeaderLine";
+    *draw << "TechDraw_RichAnno";
 
     return root;
 }
@@ -128,6 +131,7 @@ Gui::ToolBarItem* Workbench::setupToolBars() const
     *dims << "TechDraw_NewAngleDimension";
     *dims << "TechDraw_NewAngle3PtDimension";
     *dims << "TechDraw_LinkDimension";
+    *dims << "TechDraw_NewBalloon";
 //    *dims << "TechDraw_NewDimension"
 
     Gui::ToolBarItem *file = new Gui::ToolBarItem(root);
@@ -143,6 +147,8 @@ Gui::ToolBarItem* Workbench::setupToolBars() const
     *decor << "TechDraw_Image";
     *decor << "TechDraw_ToggleFrame";
 //    *decor << "TechDraw_RedrawPage";
+    *decor << "TechDraw_LeaderLine";
+    *decor << "TechDraw_RichAnno";
     return root;
 }
 
@@ -181,6 +187,7 @@ Gui::ToolBarItem* Workbench::setupCommandBars() const
     *dims << "TechDraw_NewAngleDimension";
     *dims << "TechDraw_NewAngle3PtDimension";
     *dims << "TechDraw_LinkDimension";
+    *dims << "TechDraw_NewBalloon";
 //    *dims << "TechDraw_NewDimension";
 
     Gui::ToolBarItem *file = new Gui::ToolBarItem(root);
@@ -196,6 +203,8 @@ Gui::ToolBarItem* Workbench::setupCommandBars() const
     *decor << "TechDraw_Image";
     *decor << "TechDraw_ToggleFrame";
 //    *decor << "TechDraw_RedrawPage";
+    *decor << "TechDraw_LeaderLine";
+    *decor << "TechDraw_RichAnno";
 
     return root;
 }

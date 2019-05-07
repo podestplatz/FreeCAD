@@ -56,6 +56,9 @@
 #include <Mod/TechDraw/App/DrawView.h>
 #include <Mod/TechDraw/App/DrawProjGroupItem.h>
 #include <Mod/TechDraw/App/DrawViewDimension.h>
+#include <Mod/TechDraw/App/DrawViewBalloon.h>
+#include <Mod/TechDraw/App/DrawLeaderLine.h>
+#include <Mod/TechDraw/App/DrawRichAnno.h>
 #include <Mod/TechDraw/App/DrawHatch.h>
 #include <Mod/TechDraw/App/DrawUtil.h>
 
@@ -259,6 +262,8 @@ std::vector<App::DocumentObject*> ViewProviderPage::claimChildren(void) const
     // Collect any child views
     // for Page, valid children are any View except: DrawProjGroupItem
     //                                               DrawViewDimension
+    //                                               DrawViewBalloon
+    //                                               DrawLeader
     //                                               any FeatuerView in a DrawViewClip
     //                                               DrawHatch
 
@@ -268,10 +273,22 @@ std::vector<App::DocumentObject*> ViewProviderPage::claimChildren(void) const
       for(std::vector<App::DocumentObject *>::const_iterator it = views.begin(); it != views.end(); ++it) {
           TechDraw::DrawView* featView = dynamic_cast<TechDraw::DrawView*> (*it);
           App::DocumentObject *docObj = *it;
+          //DrawRichAnno with no parent is child of Page
+          TechDraw::DrawRichAnno* dra = dynamic_cast<TechDraw::DrawRichAnno*> (*it);
+          if (dra != nullptr) {
+              if (dra->AnnoParent.getValue() == nullptr) {
+                  temp.push_back(*it);
+                  continue;
+              }
+          }
+
           // Don't collect if dimension, projection group item, hatch or member of ClipGroup as these should be grouped elsewhere
           if(docObj->isDerivedFrom(TechDraw::DrawProjGroupItem::getClassTypeId())    ||
              docObj->isDerivedFrom(TechDraw::DrawViewDimension::getClassTypeId())    ||
              docObj->isDerivedFrom(TechDraw::DrawHatch::getClassTypeId())            ||
+             docObj->isDerivedFrom(TechDraw::DrawViewBalloon::getClassTypeId())      ||
+             docObj->isDerivedFrom(TechDraw::DrawRichAnno::getClassTypeId())         ||
+             docObj->isDerivedFrom(TechDraw::DrawLeaderLine::getClassTypeId())       ||
              (featView && featView->isInClip()) )
               continue;
           else

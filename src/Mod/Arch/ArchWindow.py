@@ -104,14 +104,18 @@ def makeWindow(baseobj=None,width=None,height=None,parts=None,name="Window"):
         obj.Base.ViewObject.DisplayMode = "Wireframe"
         obj.Base.ViewObject.hide()
         from DraftGui import todo
-        todo.delay(recolorize,obj)
+        todo.delay(recolorize,[obj.Document.Name,obj.Name])
     return obj
 
-def recolorize(obj):
+def recolorize(names): # names is [docname,objname]
 
-    if obj.ViewObject:
-        if obj.ViewObject.Proxy:
-            obj.ViewObject.Proxy.colorize(obj,force=True)
+    if names[0] in FreeCAD.listDocuments():
+        doc = FreeCAD.getDocument(names[0])
+        obj = doc.getObject(names[1])
+        if obj:
+            if obj.ViewObject:
+                if obj.ViewObject.Proxy:
+                    obj.ViewObject.Proxy.colorize(obj,force=True)
 
 def makeWindowPreset(windowtype,width,height,h1,h2,h3,w1,w2,o1,o2,placement=None):
 
@@ -566,7 +570,7 @@ def makeWindowPreset(windowtype,width,height,h1,h2,h3,w1,w2,o1,o2,placement=None
             obj.Offset = o1
             obj.Placement = FreeCAD.Placement() # unable to find where this bug comes from...
             if "door" in windowtype:
-                obj.IfcRole = "Door"
+                obj.IfcType = "Door"
                 obj.Label = translate("Arch","Door")
             FreeCAD.ActiveDocument.recompute()
             return obj
@@ -812,14 +816,17 @@ class _CommandWindow:
             elif param == "Height":
                 wid.setText(FreeCAD.Units.Quantity(self.Height,FreeCAD.Units.Length).UserString)
             elif param == "O1":
-                wid.setText(FreeCAD.Units.Quantity(0,FreeCAD.Units.Length).UserString)
-                setattr(self,param,0)
+                n = FreeCAD.ParamGet("User parameter:BaseApp/Preferences/Mod/Arch").GetFloat("WindowO1",0.0)
+                wid.setText(FreeCAD.Units.Quantity(n,FreeCAD.Units.Length).UserString)
+                setattr(self,param,n)
             elif param == "W1":
-                wid.setText(FreeCAD.Units.Quantity(self.Thickness*2,FreeCAD.Units.Length).UserString)
-                setattr(self,param,self.Thickness*2)
+                n = FreeCAD.ParamGet("User parameter:BaseApp/Preferences/Mod/Arch").GetFloat("WindowW1",self.Thickness*2)
+                wid.setText(FreeCAD.Units.Quantity(n,FreeCAD.Units.Length).UserString)
+                setattr(self,param,n)
             else:
-                wid.setText(FreeCAD.Units.Quantity(self.Thickness,FreeCAD.Units.Length).UserString)
-                setattr(self,param,self.Thickness)
+                n = FreeCAD.ParamGet("User parameter:BaseApp/Preferences/Mod/Arch").GetFloat("Window"+param,self.Thickness)
+                wid.setText(FreeCAD.Units.Quantity(n,FreeCAD.Units.Length).UserString)
+                setattr(self,param,n)
             grid.addWidget(lab,i,0,1,1)
             grid.addWidget(wid,i,1,1,1)
             i += 1
@@ -830,7 +837,7 @@ class _CommandWindow:
 
     def getValueChanged(self,p):
 
-      return lambda d : self.setParams(p, d)
+        return lambda d : self.setParams(p, d)
 
     def setSill(self,d):
 
@@ -846,6 +853,7 @@ class _CommandWindow:
         self.tracker.length(self.Width)
         self.tracker.height(self.Height)
         self.tracker.width(self.W1)
+        FreeCAD.ParamGet("User parameter:BaseApp/Preferences/Mod/Arch").SetFloat("Window"+param,d)
 
     def setPreset(self,i):
 
@@ -913,7 +921,7 @@ class _Window(ArchComponent.Component):
 
         ArchComponent.Component.__init__(self,obj)
         self.setProperties(obj)
-        obj.IfcRole = "Window"
+        obj.IfcType = "Window"
         obj.MoveWithHost = True
 
     def setProperties(self,obj):
@@ -1368,7 +1376,7 @@ class _ViewProviderWindow(ArchComponent.ViewProviderComponent):
                             obj.ViewObject.update()
             self.colorize(obj)
         elif prop == "CloneOf":
-            if obj.CloneOf:
+            if hasattr(obj,"CloneOf") and obj.CloneOf:
                 mat = None
                 if hasattr(obj,"Material"):
                     if obj.Material:
@@ -1419,7 +1427,7 @@ class _ViewProviderWindow(ArchComponent.ViewProviderComponent):
     def colorize(self,obj,force=False):
 
         "setting different part colors"
-        if obj.CloneOf:
+        if hasattr(obj,"CloneOf") and obj.CloneOf:
             if self.areDifferentColors(obj.ViewObject.DiffuseColor,obj.CloneOf.ViewObject.DiffuseColor) or force:
                 obj.ViewObject.DiffuseColor = obj.CloneOf.ViewObject.DiffuseColor
             return

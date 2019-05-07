@@ -65,6 +65,7 @@ QGIPrimPath::QGIPrimPath():
 
 QVariant QGIPrimPath::itemChange(GraphicsItemChange change, const QVariant &value)
 {
+//    Base::Console().Message("QGIPP::itemChange(%d) - type: %d\n", change,type() - QGraphicsItem::UserType);
     if (change == ItemSelectedHasChanged && scene()) {
         if(isSelected()) {
             setPrettySel();
@@ -85,15 +86,13 @@ void QGIPrimPath::hoverEnterEvent(QGraphicsSceneHoverEvent *event)
 
 void QGIPrimPath::hoverLeaveEvent(QGraphicsSceneHoverEvent *event)
 {
-//    QGIView *view = dynamic_cast<QGIView *> (parentItem());    //this is temp for debug??
-//    assert(view != 0);
-//    Q_UNUSED(view);
-    if(!isSelected() && !isHighlighted) {
+    if(!isSelected()) {
         setPrettyNormal();
     }
     QGraphicsPathItem::hoverLeaveEvent(event);
 }
 
+//set highlighted is obsolete
 void QGIPrimPath::setHighlighted(bool b)
 {
     isHighlighted = b;
@@ -226,4 +225,19 @@ Base::Reference<ParameterGrp> QGIPrimPath::getParmGroup()
     Base::Reference<ParameterGrp> hGrp = App::GetApplication().GetUserParameter()
         .GetGroup("BaseApp")->GetGroup("Preferences")->GetGroup("Mod/TechDraw/Colors");
     return hGrp;
+}
+
+void QGIPrimPath::mousePressEvent(QGraphicsSceneMouseEvent * event)
+{
+    QGIView *parent;
+    QGraphicsItem* qparent = parentItem();
+    if (qparent != nullptr) {
+        parent = dynamic_cast<QGIView *> (qparent);
+        if (parent != nullptr) {
+            parent->mousePressEvent(event);
+        } else {
+            Base::Console().Log("QGIPP::mousePressEvent - no QGIView parent\n");
+        }
+    }
+    QGraphicsPathItem::mousePressEvent(event);
 }

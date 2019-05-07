@@ -58,6 +58,7 @@
 #include <Mod/TechDraw/App/DrawSVGTemplate.h>
 #include <Mod/TechDraw/App/DrawParametricTemplate.h>
 #include <Mod/TechDraw/App/DrawViewCollection.h>
+#include <Mod/TechDraw/App/DrawViewBalloon.h>
 #include <Mod/TechDraw/App/DrawViewDimension.h>
 #include <Mod/TechDraw/App/DrawProjGroup.h>
 #include <Mod/TechDraw/App/DrawViewPart.h>
@@ -67,6 +68,8 @@
 #include <Mod/TechDraw/App/DrawHatch.h>
 #include <Mod/TechDraw/App/DrawViewSpreadsheet.h>
 #include <Mod/TechDraw/App/DrawViewImage.h>
+#include <Mod/TechDraw/App/DrawLeaderLine.h>
+#include <Mod/TechDraw/App/DrawRichAnno.h>
 
 #include "Rez.h"
 #include "QGIDrawingTemplate.h"
@@ -75,6 +78,7 @@
 #include "TemplateTextField.h"
 #include "QGIViewCollection.h"
 #include "QGIViewDimension.h"
+#include "QGIViewBalloon.h"
 #include "QGIProjGroup.h"
 #include "QGIViewPart.h"
 #include "QGIViewSection.h"
@@ -84,6 +88,8 @@
 #include "QGIViewSpreadsheet.h"
 #include "QGIViewImage.h"
 #include "QGIFace.h"
+#include "QGILeaderLine.h"
+#include "QGIRichAnno.h"
 
 #include "ZVALUE.h"
 #include "ViewProviderPage.h"
@@ -104,6 +110,8 @@ QGVPage::QGVPage(ViewProviderPage *vp, QGraphicsScene* s, QWidget *parent)
     setObjectName(QString::fromLocal8Bit(name));
 
     setScene(s);
+    setMouseTracking(true);
+    viewport()->setMouseTracking(true);
 
     setViewportUpdateMode(QGraphicsView::SmartViewportUpdate);
     setCacheMode(QGraphicsView::CacheBackground);
@@ -133,6 +141,9 @@ QGVPage::QGVPage(ViewProviderPage *vp, QGraphicsScene* s, QWidget *parent)
     setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
 
     bkgBrush = new QBrush(getBackgroundColor());
+
+    balloonIndex = 1;
+    balloonPlacing(false);
 
     resetCachedContent();
 }
@@ -255,7 +266,13 @@ int QGVPage::removeQViewByName(const char* name)
             break;
         }
     }
+
     if (found) {
+        int balloonItemType = QGraphicsItem::UserType + 140;
+        if (ourItem->type() == balloonItemType) {
+            QGIViewBalloon* balloon = dynamic_cast<QGIViewBalloon*>(ourItem);
+            balloon->disconnect();
+        }
         removeQViewFromScene(ourItem);
         delete ourItem;
     }
@@ -383,6 +400,43 @@ QGIView * QGVPage::addDrawViewImage(TechDraw::DrawViewImage *view)
     return qview;
 }
 
+QGIView * QGVPage::addViewBalloon(TechDraw::DrawViewBalloon *balloon)
+{
+    auto balloonGroup( new QGIViewBalloon );
+
+    auto ourScene( scene() );
+    assert(ourScene);
+    ourScene->addItem(balloonGroup);
+
+    balloonGroup->setViewPartFeature(balloon);
+
+    // Find if it belongs to a parent
+    QGIView *parent = 0;
+    parent = findParent(balloonGroup);
+
+    if(balloon->OriginIsSet.getValue() == false) {
+        if(parent) {
+            balloonPlacing(true);
+            QApplication::setOverrideCursor(QCursor(QPixmap(QString::fromUtf8(":/icons/cursor-balloon.png")),0,32));
+            balloonGroup->connect(parent);
+            addBalloonToParent(balloonGroup,parent);
+        }
+    }
+
+    return balloonGroup;
+}
+
+void QGVPage::addBalloonToParent(QGIViewBalloon* balloon, QGIView* parent)
+{
+    assert(balloon);
+    assert(parent);          //blow up if we don't have Dimension or Parent
+    QPointF posRef(0.,0.);
+    QPointF mapPos = balloon->mapToItem(parent, posRef);
+    balloon->moveBy(-mapPos.x(), -mapPos.y());
+    parent->addToGroup(balloon);
+    balloon->setZValue(ZVALUE::DIMENSION);
+}
+
 QGIView * QGVPage::addViewDimension(TechDraw::DrawViewDimension *dim)
 {
     auto dimGroup( new QGIViewDimension );
@@ -413,6 +467,63 @@ void QGVPage::addDimToParent(QGIViewDimension* dim, QGIView* parent)
     dim->moveBy(-mapPos.x(), -mapPos.y());
     parent->addToGroup(dim);
     dim->setZValue(ZVALUE::DIMENSION);
+}
+
+QGIView * QGVPage::addViewLeader(TechDraw::DrawLeaderLine *leader)
+{
+//    Base::Console().Message("QGVP::addViewLeader(%s)\n",leader->getNameInDocument());
+    QGILeaderLine* leaderGroup = nullptr;
+
+    App::DocumentObject* parentObj = leader->LeaderParent.getValue();
+    TechDraw::DrawView*  parentDV  = dynamic_cast<TechDraw::DrawView*>(parentObj);
+
+    //NOTE: if Leaders are ever allowed to not be attached to a View, this next bit will have to change
+    if (parentDV != nullptr) {
+        QGIView* parentQV = findQViewForDocObj(parentObj);
+        if (parentQV != nullptr) {
+            leaderGroup = new QGILeaderLine(parentQV, leader);
+            leaderGroup->updateView(true);            //this is different from everybody else,
+                                                      //but it works. 
+            return leaderGroup;
+        }
+    } else {
+        throw Base::TypeError("QGVP::addViewLeader - parent DV has no QGIV");
+    }
+    return nullptr;
+}
+
+void QGVPage::addLeaderToParent(QGILeaderLine* lead, QGIView* parent)
+{
+    assert(lead);
+    assert(parent);          //blow up if we don't have Leader or Parent
+    QPointF posRef(0.,0.);
+    QPointF mapPos = lead->mapToItem(parent, posRef);
+    lead->moveBy(-mapPos.x(), -mapPos.y());
+    parent->addToGroup(lead);              //vs lead->setParentItem(parent)??
+    lead->setZValue(ZVALUE::DIMENSION);
+}
+
+QGIView * QGVPage::addRichAnno(TechDraw::DrawRichAnno* anno)
+{
+    QGIRichAnno* annoGroup = nullptr;
+    TechDraw::DrawView*  parentDV = nullptr;
+    
+    App::DocumentObject* parentObj = anno->AnnoParent.getValue();
+    if (parentObj != nullptr) {
+        parentDV  = dynamic_cast<TechDraw::DrawView*>(parentObj);
+    }
+    if (parentDV != nullptr) {
+        QGIView* parentQV = findQViewForDocObj(parentObj);
+        annoGroup = new QGIRichAnno(parentQV, anno);
+        annoGroup->updateView(true);
+    } else {
+        annoGroup = new QGIRichAnno(nullptr, anno);
+        if (annoGroup->scene() == nullptr) {
+            scene()->addItem(annoGroup);
+        }
+        annoGroup->updateView(true);
+    }
+    return annoGroup;
 }
 
 //! find the graphic for a DocumentObject
@@ -449,11 +560,11 @@ QGIView* QGVPage::getQGIVByName(std::string name)
 QGIView * QGVPage::findParent(QGIView *view) const
 {
     const std::vector<QGIView *> qviews = getViews();
-    TechDraw::DrawView *myView = view->getViewObject();
+    TechDraw::DrawView *myFeat = view->getViewObject();
 
     //If type is dimension we check references first
     TechDraw::DrawViewDimension *dim = 0;
-    dim = dynamic_cast<TechDraw::DrawViewDimension *>(myView);
+    dim = dynamic_cast<TechDraw::DrawViewDimension *>(myFeat);
 
     if(dim) {
         std::vector<App::DocumentObject *> objs = dim->References2D.getValues();
@@ -463,6 +574,23 @@ QGIView * QGVPage::findParent(QGIView *view) const
             // Attach the dimension to the first object's group
             for(std::vector<QGIView *>::const_iterator it = qviews.begin(); it != qviews.end(); ++it) {
                 if(strcmp((*it)->getViewName(), objs.at(0)->getNameInDocument()) == 0) {
+                    return *it;
+                }
+            }
+        }
+    }
+
+    //If type is balloon we check references first
+    TechDraw::DrawViewBalloon *balloon = 0;
+    balloon = dynamic_cast<TechDraw::DrawViewBalloon *>(myFeat);
+
+    if(balloon) {
+        App::DocumentObject* obj = balloon->sourceView.getValue();
+
+        if(obj) {
+            // Attach the dimension to the first object's group
+            for(std::vector<QGIView *>::const_iterator it = qviews.begin(); it != qviews.end(); ++it) {
+                if(strcmp((*it)->getViewName(), obj->getNameInDocument()) == 0) {
                     return *it;
                 }
             }
@@ -479,16 +607,31 @@ QGIView * QGVPage::findParent(QGIView *view) const
             if(collection) {
                 std::vector<App::DocumentObject *> objs = collection->Views.getValues();
                 for( std::vector<App::DocumentObject *>::iterator it = objs.begin(); it != objs.end(); ++it) {
-                    if(strcmp(myView->getNameInDocument(), (*it)->getNameInDocument()) == 0)
+                    if(strcmp(myFeat->getNameInDocument(), (*it)->getNameInDocument()) == 0)
 
                         return grp;
                 }
             }
         }
-     }
+    }
 
+     //If type is LeaderLine we check LeaderParent
+    TechDraw::DrawLeaderLine *lead = 0;
+    lead = dynamic_cast<TechDraw::DrawLeaderLine *>(myFeat);
+
+    if(lead) {
+        App::DocumentObject* obj = lead->LeaderParent.getValue();
+        if(obj != nullptr) {
+            std::string parentName = obj->getNameInDocument();
+            for(std::vector<QGIView *>::const_iterator it = qviews.begin(); it != qviews.end(); ++it) {
+                if(strcmp((*it)->getViewName(), parentName.c_str()) == 0) {
+                    return *it;
+                }
+            }
+        }
+    }
     // Not found a parent
-    return 0;
+    return nullptr;
 }
 
 void QGVPage::setPageTemplate(TechDraw::DrawTemplate *obj)
@@ -767,7 +910,7 @@ void QGVPage::keyPressEvent(QKeyEvent *event)
             }
         }
     }
-    event->accept();
+    QGraphicsView::keyPressEvent(event);
 }
 
 void QGVPage::kbPanScroll(int xMove, int yMove) 
@@ -791,19 +934,50 @@ void QGVPage::kbPanScroll(int xMove, int yMove)
 void QGVPage::enterEvent(QEvent *event)
 {
     QGraphicsView::enterEvent(event);
+    setCursor(Qt::ArrowCursor);
     viewport()->setCursor(Qt::ArrowCursor);
+}
+
+void QGVPage::leaveEvent(QEvent * event)
+{
+    if(m_balloonPlacing) {
+
+        // Get the window geometry & cursor position
+        const QRect &rect = geometry();
+        QPoint position = this->mapFromGlobal(QCursor::pos());
+
+        // Check the bounds
+        qint32 x = qBound(rect.left(), position.x(), rect.right());
+        qint32 y = qBound(rect.top(), position.y(), rect.bottom());
+
+        QPoint newPoint(x, y);
+
+        // Adjust the cursor
+        if (x != position.x() || y != position.y())
+            QCursor::setPos(this->mapToGlobal(newPoint));
+
+        event->accept();
+    }
+
+    QGraphicsView::leaveEvent(event);
 }
 
 void QGVPage::mousePressEvent(QMouseEvent *event)
 {
     QGraphicsView::mousePressEvent(event);
-    viewport()->setCursor(Qt::ClosedHandCursor);
+//    setCursor(Qt::ArrowCursor);
+}
+
+void QGVPage::mouseMoveEvent(QMouseEvent *event)
+{
+    QGraphicsView::mouseMoveEvent(event);
 }
 
 void QGVPage::mouseReleaseEvent(QMouseEvent *event)
 {
     QGraphicsView::mouseReleaseEvent(event);
-    viewport()->setCursor(Qt::ArrowCursor);
+//    setCursor(Qt::ArrowCursor);
+//    viewport()->setCursor(Qt::ArrowCursor);
 }
 
 TechDraw::DrawPage* QGVPage::getDrawPage()

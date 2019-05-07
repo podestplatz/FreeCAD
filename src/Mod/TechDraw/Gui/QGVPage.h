@@ -41,6 +41,9 @@ class DrawViewClip;
 class DrawViewCollection;
 class DrawViewSpreadsheet;
 class DrawViewImage;
+class DrawLeaderLine;
+class DrawViewBalloon;
+class DrawRichAnno;
 }
 
 namespace TechDrawGui
@@ -49,6 +52,9 @@ class QGIView;
 class QGIViewDimension;
 class QGITemplate;
 class ViewProviderPage;
+class QGIViewBalloon;
+class QGILeaderLine;
+class QGIRichAnno;
 
 class TechDrawGuiExport QGVPage : public QGraphicsView
 {
@@ -64,6 +70,7 @@ public:
     void drawBackground(QPainter *p, const QRectF &rect) override;
 
     QGIView * addViewDimension(TechDraw::DrawViewDimension *dim);
+    QGIView * addViewBalloon(TechDraw::DrawViewBalloon *balloon);
     QGIView * addProjectionGroup(TechDraw::DrawProjGroup *view);
     QGIView * addViewPart(TechDraw::DrawViewPart *part);
     QGIView * addViewSection(TechDraw::DrawViewPart *part);
@@ -74,13 +81,17 @@ public:
     QGIView * addDrawViewClip(TechDraw::DrawViewClip *view);
     QGIView * addDrawViewSpreadsheet(TechDraw::DrawViewSpreadsheet *view);
     QGIView * addDrawViewImage(TechDraw::DrawViewImage *view);
-
+    QGIView * addViewLeader(TechDraw::DrawLeaderLine* view);
+    QGIView * addRichAnno(TechDraw::DrawRichAnno* anno);
 
     QGIView* findQViewForDocObj(App::DocumentObject *obj) const;
     QGIView* getQGIVByName(std::string name);
     QGIView* findParent(QGIView *) const;
 
+    void addBalloonToParent(QGIViewBalloon* balloon, QGIView* parent);
     void addDimToParent(QGIViewDimension* dim, QGIView* parent);
+    void addLeaderToParent(QGILeaderLine* lead, QGIView* parent);
+
 //    const std::vector<QGIView *> & getViews() const { return views; }    //only used in MDIVP
     std::vector<QGIView *> getViews() const;   //only used in MDIVP
 
@@ -88,6 +99,8 @@ public:
     int removeQView(QGIView *view);
     int removeQViewByName(const char* name);
     void removeQViewFromScene(QGIView *view);
+
+    void balloonPlacing(bool val) { m_balloonPlacing = val; };
 
     //void setViews(const std::vector<QGIView *> &view) {views = view; }
     void setPageTemplate(TechDraw::DrawTemplate *pageTemplate);
@@ -104,6 +117,8 @@ public:
     void saveSvg(QString filename);
     void postProcessXml(QTemporaryFile* tempFile, QString filename, QString pagename);
 
+    int balloonIndex;
+
 public Q_SLOTS:
     void setHighQualityAntialiasing(bool highQualityAntialiasing);
 
@@ -111,7 +126,9 @@ protected:
     void wheelEvent(QWheelEvent *event) override;
     void paintEvent(QPaintEvent *event) override;
     void enterEvent(QEvent *event) override;
+    void leaveEvent(QEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;
+    void mouseMoveEvent(QMouseEvent *event) override;
     void mouseReleaseEvent(QMouseEvent *event) override;
     void keyPressEvent(QKeyEvent *event) override;
     void kbPanScroll(int xMove = 1, int yMove = 1); 
@@ -137,6 +154,7 @@ private:
     double m_zoomIncrement;
     int m_reversePan;
     int m_reverseScroll;
+    bool m_balloonPlacing;
 };
 
 } // namespace MDIViewPageGui
